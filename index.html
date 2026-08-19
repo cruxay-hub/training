@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Train" />
@@ -13,397 +13,611 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body { background: #0A0A0F; overscroll-behavior: none; }
-    input::-webkit-inner-spin-button,
-    input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input::-webkit-inner-spin-button, input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     input[type=number] { -moz-appearance: textfield; }
     ::-webkit-scrollbar { display: none; }
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
-    const { useState, useEffect } = React;
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
 
-    const WORKOUTS = {
-      "Upper A": {
-        day: "Monday", focus: "Push", color: "#FF6B35",
-        exercises: [
-          { name: "Barbell / DB Bench Press", sets: 3, reps: "6–8", notes: "Heavy, controlled" },
-          { name: "Overhead Press (BB or DB)", sets: 3, reps: "8–10", notes: "" },
-          { name: "Incline DB Press", sets: 2, reps: "10–12", notes: "" },
-          { name: "Cable Lateral Raise", sets: 3, reps: "12–15", notes: "" },
-          { name: "Tricep Pushdown", sets: 2, reps: "12–15", notes: "" },
-          { name: "Face Pulls", sets: 2, reps: "15", notes: "Shoulder health — don't skip" },
-        ],
-      },
-      "Lower A": {
-        day: "Wednesday", focus: "Quad", color: "#4ECDC4",
-        exercises: [
-          { name: "Barbell Back Squat", sets: 4, reps: "6–8", notes: "Primary stimulus" },
-          { name: "Leg Press", sets: 3, reps: "10–12", notes: "Volume without CNS cost" },
-          { name: "Bulgarian Split Squat", sets: 2, reps: "10 each", notes: "Unilateral balance" },
-          { name: "Leg Curl (machine)", sets: 3, reps: "10–12", notes: "" },
-          { name: "Calf Raise", sets: 3, reps: "15", notes: "" },
-          { name: "Ab Work", sets: 2, reps: "Failure", notes: "Planks, dead bugs" },
-        ],
-      },
-      "Upper B": {
-        day: "Friday", focus: "Pull", color: "#A855F7",
-        exercises: [
-          { name: "Pull-ups / Lat Pulldown", sets: 4, reps: "6–8", notes: "Weighted if bodyweight is easy" },
-          { name: "Barbell / Cable Row", sets: 3, reps: "8–10", notes: "" },
-          { name: "Single-arm DB Row", sets: 2, reps: "10–12 each", notes: "" },
-          { name: "Rear Delt Fly", sets: 3, reps: "12–15", notes: "" },
-          { name: "Barbell / DB Curl", sets: 3, reps: "10–12", notes: "" },
-          { name: "Hammer Curl", sets: 2, reps: "12", notes: "" },
-        ],
-      },
-      "Lower B": {
-        day: "Saturday", focus: "Hinge", color: "#22C55E",
-        exercises: [
-          { name: "Romanian Deadlift", sets: 4, reps: "6–8", notes: "Primary stimulus" },
-          { name: "Hip Thrust", sets: 3, reps: "10–12", notes: "Glute activation often undertrained" },
-          { name: "Walking Lunges", sets: 2, reps: "12 each", notes: "" },
-          { name: "Leg Curl (machine)", sets: 3, reps: "10–12", notes: "" },
-          { name: "Single-leg Calf Raise", sets: 2, reps: "15", notes: "" },
-          { name: "Ab Work", sets: 2, reps: "Failure", notes: "Hollow holds, cable crunches" },
-        ],
-      },
+/* ── DEFAULT PLAN ─────────────────────────────────────────────────────────── */
+const DEFAULT_PLAN = {
+  "Upper A": { day: "Monday", focus: "Push", color: "#FF6B35", exercises: [
+    { name: "Barbell / DB Bench Press", sets: 3, reps: "6–8", notes: "Heavy, controlled" },
+    { name: "Overhead Press (BB or DB)", sets: 3, reps: "8–10", notes: "" },
+    { name: "Incline DB Press", sets: 2, reps: "10–12", notes: "" },
+    { name: "Cable Lateral Raise", sets: 3, reps: "12–15", notes: "" },
+    { name: "Tricep Pushdown", sets: 2, reps: "12–15", notes: "" },
+    { name: "Face Pulls", sets: 2, reps: "15", notes: "Shoulder health — don't skip" },
+  ]},
+  "Lower A": { day: "Wednesday", focus: "Quad", color: "#4ECDC4", exercises: [
+    { name: "Barbell Back Squat", sets: 4, reps: "6–8", notes: "Primary stimulus" },
+    { name: "Leg Press", sets: 3, reps: "10–12", notes: "Volume without CNS cost" },
+    { name: "Bulgarian Split Squat", sets: 2, reps: "10 each", notes: "Unilateral balance" },
+    { name: "Leg Curl (machine)", sets: 3, reps: "10–12", notes: "" },
+    { name: "Calf Raise", sets: 3, reps: "15", notes: "" },
+    { name: "Ab Work", sets: 2, reps: "Failure", notes: "Planks, dead bugs" },
+  ]},
+  "Upper B": { day: "Friday", focus: "Pull", color: "#A855F7", exercises: [
+    { name: "Pull-ups / Lat Pulldown", sets: 4, reps: "6–8", notes: "Weighted if bodyweight is easy" },
+    { name: "Barbell / Cable Row", sets: 3, reps: "8–10", notes: "" },
+    { name: "Single-arm DB Row", sets: 2, reps: "10–12 each", notes: "" },
+    { name: "Rear Delt Fly", sets: 3, reps: "12–15", notes: "" },
+    { name: "Barbell / DB Curl", sets: 3, reps: "10–12", notes: "" },
+    { name: "Hammer Curl", sets: 2, reps: "12", notes: "" },
+  ]},
+  "Lower B": { day: "Saturday", focus: "Hinge", color: "#22C55E", exercises: [
+    { name: "Romanian Deadlift", sets: 4, reps: "6–8", notes: "Primary stimulus" },
+    { name: "Hip Thrust", sets: 3, reps: "10–12", notes: "Glute activation often undertrained" },
+    { name: "Walking Lunges", sets: 2, reps: "12 each", notes: "" },
+    { name: "Leg Curl (machine)", sets: 3, reps: "10–12", notes: "" },
+    { name: "Single-leg Calf Raise", sets: 2, reps: "15", notes: "" },
+    { name: "Ab Work", sets: 2, reps: "Failure", notes: "Hollow holds, cable crunches" },
+  ]},
+};
+
+const PALETTE = ["#FF6B35","#4ECDC4","#A855F7","#22C55E","#F59E0B","#EC4899","#38BDF8","#F43F5E"];
+
+const K_LOG = "wt_log_v2";
+const K_PLAN = "wt_plan_v2";
+const K_DRAFT = "wt_draft_v2";
+
+const read = (k, fb) => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } };
+
+/* One-time migration: pull sessions logged under the v1 key into v2. */
+(function migrateV1() {
+  try {
+    if (localStorage.getItem("wt_migrated_v1")) return;
+    const old = localStorage.getItem("workout_log_v1");
+    if (old) {
+      const oldLog = JSON.parse(old);
+      const cur = JSON.parse(localStorage.getItem("wt_log_v2") || "{}");
+      Object.entries(oldLog).forEach(([date, sessions]) => {
+        if (!cur[date]) cur[date] = [];
+        sessions.forEach(s => {
+          const dupe = cur[date].some(e => e.workout === s.workout && JSON.stringify(e.exercises) === JSON.stringify(s.exercises));
+          if (!dupe) cur[date].push(s);
+        });
+      });
+      localStorage.setItem("wt_log_v2", JSON.stringify(cur));
+    }
+    localStorage.setItem("wt_migrated_v1", "1");
+  } catch {}
+})();
+const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const del = (k) => { try { localStorage.removeItem(k); } catch {} };
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+
+/* Find the most recent logged performance for a given exercise name */
+function lastPerformance(log, exName) {
+  const all = [];
+  Object.entries(log).forEach(([date, sessions]) => sessions.forEach(s => all.push({ ...s, date })));
+  all.sort((a,b) => b.date.localeCompare(a.date));
+  for (const s of all) {
+    const ex = s.exercises.find(e => e.name === exName);
+    if (ex && ex.sets.some(st => st.weight || st.reps)) {
+      return { date: s.date, sets: ex.sets };
+    }
+  }
+  return null;
+}
+
+function toCSV(log) {
+  const rows = [["Date","Workout","Exercise","Set","Weight (kg)","Reps","Session Note"]];
+  const all = [];
+  Object.entries(log).forEach(([date, sessions]) => sessions.forEach(s => all.push({ ...s, date })));
+  all.sort((a,b) => a.date.localeCompare(b.date));
+  all.forEach(s => {
+    s.exercises.forEach(ex => {
+      ex.sets.forEach((st, i) => {
+        rows.push([s.date, s.workout, ex.name, i+1, st.weight || "", st.reps || "", (s.note||"").replace(/"/g,'""')]);
+      });
+    });
+  });
+  return rows.map(r => r.map(c => `"${String(c)}"`).join(",")).join("\n");
+}
+
+function App() {
+  const [plan, setPlan] = useState(() => read(K_PLAN, DEFAULT_PLAN));
+  const [log, setLog] = useState(() => read(K_LOG, {}));
+  const [screen, setScreen] = useState("home");
+  const [activeWorkout, setActiveWorkout] = useState(null);
+  const [sessionData, setSessionData] = useState({});
+  const [completedSets, setCompletedSets] = useState({});
+  const [sessionNote, setSessionNote] = useState("");
+  const [viewSession, setViewSession] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [toast, setToast] = useState(null);
+  const restored = useRef(false);
+
+  useEffect(() => { write(K_LOG, log); }, [log]);
+  useEffect(() => { write(K_PLAN, plan); }, [plan]);
+
+  /* ── AUTOSAVE: persist in-progress session on every change ──────────────── */
+  useEffect(() => {
+    if (screen === "workout" && activeWorkout) {
+      write(K_DRAFT, { activeWorkout, sessionData, completedSets, sessionNote, ts: Date.now() });
+    }
+  }, [screen, activeWorkout, sessionData, completedSets, sessionNote]);
+
+  /* ── RESTORE: on load, offer to resume an unfinished session ────────────── */
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    const d = read(K_DRAFT, null);
+    if (d && d.activeWorkout) setDraft(d);
+  }, []);
+
+  /* Also flush on backgrounding — belt and braces for iOS tab eviction */
+  useEffect(() => {
+    const flush = () => {
+      if (screen === "workout" && activeWorkout) {
+        write(K_DRAFT, { activeWorkout, sessionData, completedSets, sessionNote, ts: Date.now() });
+      }
+    };
+    document.addEventListener("visibilitychange", flush);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", flush);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, [screen, activeWorkout, sessionData, completedSets, sessionNote]);
+
+  const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 2200); };
+
+  const startWorkout = (name) => {
+    setActiveWorkout(name);
+    const init = {};
+    plan[name].exercises.forEach((ex, i) => {
+      init[i] = Array.from({ length: ex.sets }, () => ({ weight: "", reps: "" }));
+    });
+    setSessionData(init); setCompletedSets({}); setSessionNote(""); setScreen("workout");
+  };
+
+  const resumeDraft = () => {
+    setActiveWorkout(draft.activeWorkout);
+    setSessionData(draft.sessionData || {});
+    setCompletedSets(draft.completedSets || {});
+    setSessionNote(draft.sessionNote || "");
+    setDraft(null); setScreen("workout");
+  };
+
+  const discardDraft = () => { del(K_DRAFT); setDraft(null); };
+
+  const updateSet = (ei, si, f, v) => setSessionData(p => {
+    const c = { ...p }; c[ei] = c[ei].map((s,i) => i===si ? { ...s, [f]: v } : s); return c;
+  });
+
+  const toggleDone = (ei, si) => setCompletedSets(p => ({ ...p, [`${ei}-${si}`]: !p[`${ei}-${si}`] }));
+
+  const finishWorkout = () => {
+    const date = todayStr();
+    const entry = { workout: activeWorkout, date, note: sessionNote,
+      exercises: plan[activeWorkout].exercises.map((ex,i) => ({ name: ex.name, sets: sessionData[i] })) };
+    setLog(p => { const n = { ...p }; if (!n[date]) n[date] = []; n[date].push(entry); return n; });
+    del(K_DRAFT);
+    showToast("Session saved ✓"); setScreen("home");
+  };
+
+  const totalSessions = () => Object.values(log).reduce((a,b) => a + b.length, 0);
+
+  const thisMonthCount = () => {
+    const now = new Date();
+    const prefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+    return Object.entries(log).filter(([d]) => d.startsWith(prefix)).reduce((a,[,v]) => a + v.length, 0);
+  };
+
+  const recentSessions = () => {
+    const all = [];
+    Object.entries(log).forEach(([date, ss]) => ss.forEach(s => all.push({ ...s, date })));
+    return all.sort((a,b) => b.date.localeCompare(a.date));
+  };
+
+  const exportCSV = () => {
+    if (!totalSessions()) { showToast("No sessions to export"); return; }
+    const csv = toCSV(log);
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `training-log-${todayStr()}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast("Exported ✓");
+  };
+
+  const w = activeWorkout ? plan[activeWorkout] : null;
+  const accent = w?.color || "#FF6B35";
+
+  /* ── STYLES ─────────────────────────────────────────────────────────────── */
+  const S = {
+    app: { fontFamily: "-apple-system,'SF Pro Display','Helvetica Neue',sans-serif", background: "#0A0A0F", minHeight: "100dvh", color: "#F0F0F5", maxWidth: 460, margin: "0 auto", position: "relative", paddingBottom: 92 },
+    header: { padding: "max(env(safe-area-inset-top,44px),44px) 20px 16px", background: "linear-gradient(180deg,#12121A 0%,#0A0A0F 100%)" },
+    label: { fontSize: 11, letterSpacing: ".14em", textTransform: "uppercase", color: "#555", marginBottom: 4 },
+    title: { fontSize: 30, fontWeight: 700, letterSpacing: "-.5px" },
+    card: { background: "#16161E", borderRadius: 16, padding: "16px 18px", marginBottom: 10 },
+    statRow: { display: "flex", gap: 10, marginBottom: 18 },
+    stat: { flex: 1, background: "#16161E", borderRadius: 14, padding: "14px 8px", textAlign: "center" },
+    statNum: c => ({ fontSize: 28, fontWeight: 700, letterSpacing: "-.5px", color: c }),
+    statLbl: { fontSize: 10, color: "#555", textTransform: "uppercase", letterSpacing: ".1em", marginTop: 2 },
+    sect: { fontSize: 12, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "#444", margin: "22px 0 10px 2px" },
+    wCard: c => ({ background: "#16161E", borderRadius: 20, padding: "18px 20px", marginBottom: 12, borderLeft: `3px solid ${c}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }),
+    exName: { fontSize: 16, fontWeight: 600, marginBottom: 2 },
+    exNotes: { fontSize: 12, color: "#555", marginBottom: 4, fontStyle: "italic" },
+    lastPerf: { fontSize: 11, color: "#5B7FA8", marginBottom: 10, letterSpacing: ".02em" },
+    colLbl: { fontSize: 10, color: "#333", textTransform: "uppercase", letterSpacing: ".08em", textAlign: "center" },
+    setRow: { display: "flex", alignItems: "center", gap: 8, marginBottom: 8 },
+    setNum: { width: 22, fontSize: 12, color: "#444", textAlign: "center", flexShrink: 0 },
+    inp: d => ({ flex: 1, minWidth: 0, background: "#0A0A0F", border: "1px solid #222230", borderRadius: 10, color: d ? "#444" : "#F0F0F5", fontSize: 15, padding: "9px 6px", textAlign: "center", outline: "none", fontFamily: "inherit" }),
+    doneBtn: (d,c) => ({ width: 34, height: 34, borderRadius: 10, border: d ? "none" : "2px solid #222230", background: d ? c : "transparent", color: d ? "#fff" : "#333", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "inherit" }),
+    pBtn: c => ({ display: "block", width: "100%", padding: 16, background: c, color: "#fff", border: "none", borderRadius: 16, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", marginTop: 14 }),
+    sBtn: { display: "block", width: "100%", padding: 14, background: "#1A1A22", color: "#666", border: "none", borderRadius: 16, fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 8 },
+    ta: { width: "100%", background: "#0A0A0F", border: "1px solid #222230", borderRadius: 12, color: "#F0F0F5", fontSize: 14, padding: "12px 14px", outline: "none", fontFamily: "inherit", resize: "none" },
+    ti: { width: "100%", background: "#0A0A0F", border: "1px solid #222230", borderRadius: 10, color: "#F0F0F5", fontSize: 15, padding: "10px 12px", outline: "none", fontFamily: "inherit" },
+    back: { background: "none", border: "none", color: "#666", fontSize: 15, cursor: "pointer", fontFamily: "inherit", padding: "0 0 12px", display: "flex", alignItems: "center", gap: 4 },
+    nav: { position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 460, background: "#0D0D14ee", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid #1A1A24", display: "flex", paddingBottom: "env(safe-area-inset-bottom,16px)", paddingTop: 8 },
+    navBtn: a => ({ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", color: a ? "#F0F0F5" : "#3A3A4A", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", fontFamily: "inherit", padding: "6px 0" }),
+    toast: { position: "fixed", bottom: 112, left: "50%", transform: "translateX(-50%)", background: "#22C55E", color: "#fff", padding: "10px 22px", borderRadius: 20, fontSize: 14, fontWeight: 600, zIndex: 200, whiteSpace: "nowrap" },
+    modal: { position: "fixed", inset: 0, background: "#000000cc", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 },
+    modalBox: { background: "#16161E", borderRadius: 20, padding: 24, maxWidth: 380, width: "100%" },
+    iconBtn: { background: "#1A1A22", border: "none", color: "#777", width: 34, height: 34, borderRadius: 10, fontSize: 16, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" },
+  };
+
+  const Nav = ({ cur }) => (
+    <nav style={S.nav}>
+      {[["🏠","home","Home"],["📋","history","Log"],["⚙️","manage","Plan"]].map(([i,sc,l]) => (
+        <button key={sc} style={S.navBtn(cur===sc)} onClick={() => setScreen(sc)}>
+          <span style={{ fontSize: 23 }}>{i}</span>{l}
+        </button>
+      ))}
+    </nav>
+  );
+
+  /* ── RESUME DRAFT MODAL ─────────────────────────────────────────────────── */
+  const DraftModal = () => draft ? (
+    <div style={S.modal}>
+      <div style={S.modalBox}>
+        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Unfinished session</div>
+        <div style={{ fontSize: 14, color: "#888", lineHeight: 1.6, marginBottom: 20 }}>
+          You have an in-progress <b style={{color:"#F0F0F5"}}>{draft.activeWorkout}</b> session from {new Date(draft.ts).toLocaleString()}. Pick up where you left off?
+        </div>
+        <button style={S.pBtn(plan[draft.activeWorkout]?.color || "#FF6B35")} onClick={resumeDraft}>Resume session</button>
+        <button style={S.sBtn} onClick={discardDraft}>Discard it</button>
+      </div>
+    </div>
+  ) : null;
+
+  /* ── WORKOUT SCREEN ─────────────────────────────────────────────────────── */
+  if (screen === "workout" && w) {
+    const totalSets = w.exercises.reduce((a,e) => a + e.sets, 0);
+    const done = Object.values(completedSets).filter(Boolean).length;
+    const pct = totalSets ? Math.round(done/totalSets*100) : 0;
+    return (
+      <div style={S.app}>
+        <div style={{ ...S.header, borderBottom: "1px solid #14141C" }}>
+          <div style={S.label}>{w.day} · {w.focus} Focus</div>
+          <div style={{ ...S.title, color: accent }}>{activeWorkout}</div>
+          <div style={{ background: "#1A1A24", borderRadius: 6, height: 4, marginTop: 14 }}>
+            <div style={{ width: `${pct}%`, background: accent, height: 4, borderRadius: 6, transition: "width .3s" }} />
+          </div>
+          <div style={{ fontSize: 12, color: "#444", marginTop: 5 }}>{done} / {totalSets} sets · {pct}% · autosaving</div>
+        </div>
+        <div style={{ padding: "14px 14px 0" }}>
+          {w.exercises.map((ex,i) => {
+            const last = lastPerformance(log, ex.name);
+            return (
+              <div key={i} style={S.card}>
+                <div style={S.exName}>{ex.name}</div>
+                {ex.notes && <div style={S.exNotes}>{ex.notes}</div>}
+                {last ? (
+                  <div style={S.lastPerf}>
+                    Last ({last.date}): {last.sets.filter(s=>s.weight||s.reps).map(s => `${s.weight||"–"}kg × ${s.reps||"–"}`).join("  ·  ")}
+                  </div>
+                ) : (
+                  <div style={{ ...S.lastPerf, color: "#333" }}>No previous data</div>
+                )}
+                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  <div style={{ width: 22 }} />
+                  <div style={{ ...S.colLbl, flex: 1 }}>kg</div>
+                  <div style={{ ...S.colLbl, flex: 1 }}>reps</div>
+                  <div style={{ width: 34 }} />
+                </div>
+                {Array.from({ length: ex.sets }, (_,j) => {
+                  const d = !!completedSets[`${i}-${j}`];
+                  const prev = last?.sets?.[j];
+                  return (
+                    <div key={j} style={S.setRow}>
+                      <div style={S.setNum}>{j+1}</div>
+                      <input style={S.inp(d)} type="number" inputMode="decimal"
+                        placeholder={prev?.weight ? prev.weight : "kg"}
+                        value={sessionData[i]?.[j]?.weight || ""}
+                        onChange={e => updateSet(i,j,"weight",e.target.value)} />
+                      <input style={S.inp(d)} type="number" inputMode="decimal"
+                        placeholder={prev?.reps ? prev.reps : ex.reps}
+                        value={sessionData[i]?.[j]?.reps || ""}
+                        onChange={e => updateSet(i,j,"reps",e.target.value)} />
+                      <button style={S.doneBtn(d,accent)} onClick={() => toggleDone(i,j)}>{d ? "✓" : ""}</button>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+          <div style={S.card}>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: "#888" }}>Session Notes</div>
+            <textarea style={S.ta} rows={3} placeholder="PRs, energy levels, adjustments..."
+              value={sessionNote} onChange={e => setSessionNote(e.target.value)} />
+          </div>
+          <button style={S.pBtn(accent)} onClick={finishWorkout}>Save Session</button>
+          <button style={S.sBtn} onClick={() => { del(K_DRAFT); setScreen("home"); }}>Discard</button>
+          <div style={{ height: 20 }} />
+        </div>
+        {toast && <div style={S.toast}>{toast}</div>}
+      </div>
+    );
+  }
+
+  /* ── SESSION DETAIL ─────────────────────────────────────────────────────── */
+  if (screen === "session" && viewSession) {
+    const c = plan[viewSession.workout]?.color || "#FF6B35";
+    return (
+      <div style={S.app}>
+        <div style={S.header}>
+          <button style={S.back} onClick={() => setScreen("history")}>← Back</button>
+          <div style={S.label}>{viewSession.date}</div>
+          <div style={{ ...S.title, color: c }}>{viewSession.workout}</div>
+        </div>
+        <div style={{ padding: "10px 14px" }}>
+          {viewSession.note && (
+            <div style={{ ...S.card, borderLeft: `2px solid ${c}` }}>
+              <div style={{ fontSize: 11, color: "#444", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 6 }}>Session Note</div>
+              <div style={{ fontSize: 14, color: "#aaa", lineHeight: 1.6 }}>{viewSession.note}</div>
+            </div>
+          )}
+          {viewSession.exercises.map((ex,i) => (
+            <div key={i} style={S.card}>
+              <div style={{ ...S.exName, marginBottom: 10 }}>{ex.name}</div>
+              {ex.sets.map((st,j) => (
+                <div key={j} style={{ display: "flex", gap: 10, marginBottom: 6, alignItems: "center" }}>
+                  <div style={S.setNum}>{j+1}</div>
+                  <div style={{ flex: 1, textAlign: "center", fontSize: 15, color: st.weight ? "#F0F0F5" : "#2A2A35" }}>{st.weight ? `${st.weight} kg` : "—"}</div>
+                  <div style={{ flex: 1, textAlign: "center", fontSize: 15, color: st.reps ? "#F0F0F5" : "#2A2A35" }}>{st.reps ? `${st.reps} reps` : "—"}</div>
+                </div>
+              ))}
+            </div>
+          ))}
+          <div style={{ height: 20 }} />
+        </div>
+      </div>
+    );
+  }
+
+  /* ── HISTORY ────────────────────────────────────────────────────────────── */
+  if (screen === "history") {
+    const ss = recentSessions();
+    return (
+      <div style={S.app}>
+        <div style={S.header}>
+          <div style={S.label}>Training Log</div>
+          <div style={S.title}>History</div>
+        </div>
+        <div style={{ padding: "10px 14px" }}>
+          <button style={{ ...S.sBtn, marginTop: 0, marginBottom: 16, background: "#1E2A38", color: "#7FB3E8" }} onClick={exportCSV}>
+            ⬇  Export all sessions to CSV
+          </button>
+          {ss.length === 0 ? (
+            <div style={{ textAlign: "center", color: "#333", padding: "60px 20px" }}>
+              <div style={{ fontSize: 40, marginBottom: 14 }}>🏋️</div>
+              <div style={{ fontSize: 16, color: "#444" }}>No sessions yet</div>
+            </div>
+          ) : ss.map((s,i) => {
+            const c = plan[s.workout]?.color || "#FF6B35";
+            const tot = s.exercises.reduce((a,e) => a + e.sets.length, 0);
+            const lg = s.exercises.reduce((a,e) => a + e.sets.filter(x => x.weight || x.reps).length, 0);
+            return (
+              <div key={i} style={{ ...S.card, borderLeft: `3px solid ${c}`, cursor: "pointer" }}
+                onClick={() => { setViewSession(s); setScreen("session"); }}>
+                <div style={{ fontSize: 11, color: "#444", letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 3 }}>{s.date}</div>
+                <div style={{ fontSize: 17, fontWeight: 600, color: c, marginBottom: 4 }}>{s.workout}</div>
+                <div style={{ fontSize: 13, color: "#555" }}>{lg}/{tot} sets logged · {s.exercises.length} exercises</div>
+                {s.note && <div style={{ fontSize: 12, color: "#444", marginTop: 6, fontStyle: "italic" }}>"{s.note.slice(0,70)}{s.note.length>70?"…":""}"</div>}
+              </div>
+            );
+          })}
+          <div style={{ height: 20 }} />
+        </div>
+        <Nav cur="history" />
+        {toast && <div style={S.toast}>{toast}</div>}
+      </div>
+    );
+  }
+
+  /* ── EDIT WORKOUT ───────────────────────────────────────────────────────── */
+  if (screen === "edit" && editTarget) {
+    const isNew = !plan[editTarget.originalName];
+    const t = editTarget;
+    const setT = (patch) => setEditTarget(p => ({ ...p, ...patch }));
+    const setEx = (i, patch) => setT({ exercises: t.exercises.map((e,x) => x===i ? { ...e, ...patch } : e) });
+
+    const save = () => {
+      const name = (t.name || "").trim();
+      if (!name) { showToast("Name required"); return; }
+      setPlan(p => {
+        const n = { ...p };
+        if (t.originalName && t.originalName !== name) delete n[t.originalName];
+        n[name] = { day: t.day, focus: t.focus, color: t.color, exercises: t.exercises.filter(e => e.name.trim()) };
+        return n;
+      });
+      showToast(isNew ? "Workout added ✓" : "Workout updated ✓");
+      setScreen("manage");
     };
 
-    const STORAGE_KEY = "workout_log_v1";
-    const loadLog = () => { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : {}; } catch { return {}; } };
-    const saveLog = (log) => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(log)); } catch {} };
-    const todayStr = () => new Date().toISOString().slice(0, 10);
-
-    function App() {
-      const [screen, setScreen] = useState("home");
-      const [activeWorkout, setActiveWorkout] = useState(null);
-      const [sessionData, setSessionData] = useState({});
-      const [completedSets, setCompletedSets] = useState({});
-      const [sessionNote, setSessionNote] = useState("");
-      const [log, setLog] = useState(loadLog);
-      const [viewSession, setViewSession] = useState(null);
-      const [toast, setToast] = useState(null);
-
-      useEffect(() => { saveLog(log); }, [log]);
-
-      const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
-
-      const startWorkout = (name) => {
-        setActiveWorkout(name);
-        const init = {};
-        WORKOUTS[name].exercises.forEach((ex, i) => {
-          init[i] = Array.from({ length: ex.sets }, () => ({ weight: "", reps: "" }));
-        });
-        setSessionData(init);
-        setCompletedSets({});
-        setSessionNote("");
-        setScreen("workout");
-      };
-
-      const updateSet = (exIdx, setIdx, field, value) => {
-        setSessionData(prev => {
-          const copy = { ...prev };
-          copy[exIdx] = copy[exIdx].map((s, i) => i === setIdx ? { ...s, [field]: value } : s);
-          return copy;
-        });
-      };
-
-      const toggleSetDone = (exIdx, setIdx) => {
-        const key = `${exIdx}-${setIdx}`;
-        setCompletedSets(prev => ({ ...prev, [key]: !prev[key] }));
-      };
-
-      const finishWorkout = () => {
-        const date = todayStr();
-        const entry = {
-          workout: activeWorkout,
-          date,
-          note: sessionNote,
-          exercises: WORKOUTS[activeWorkout].exercises.map((ex, i) => ({
-            name: ex.name,
-            sets: sessionData[i],
-          })),
-        };
-        setLog(prev => {
-          const n = { ...prev };
-          if (!n[date]) n[date] = [];
-          n[date].push(entry);
-          return n;
-        });
-        showToast("Session saved ✓");
-        setScreen("home");
-      };
-
-      const totalSessions = () => Object.values(log).reduce((a, b) => a + b.length, 0);
-
-      const recentSessions = () => {
-        const all = [];
-        Object.entries(log).forEach(([date, sessions]) => sessions.forEach(s => all.push({ ...s, date })));
-        return all.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30);
-      };
-
-      const monthCount = () => {
-        const d = new Date();
-        let count = 0;
-        for (let i = 0; i < 30; i++) {
-          const ds = d.toISOString().slice(0, 10);
-          if (log[ds]) count += log[ds].length;
-          d.setDate(d.getDate() - 1);
-        }
-        return count;
-      };
-
-      const w = activeWorkout ? WORKOUTS[activeWorkout] : null;
-      const accent = w?.color || "#FF6B35";
-
-      const css = {
-        app: { fontFamily: "-apple-system,'SF Pro Display','Helvetica Neue',sans-serif", background: "#0A0A0F", minHeight: "100dvh", color: "#F0F0F5", maxWidth: 430, margin: "0 auto", position: "relative", paddingBottom: 88 },
-        header: { padding: "env(safe-area-inset-top, 44px) 20px 16px", paddingTop: "max(env(safe-area-inset-top,44px), 44px)", background: "linear-gradient(180deg,#12121A 0%,#0A0A0F 100%)" },
-        label: { fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "#555", marginBottom: 4 },
-        title: { fontSize: 30, fontWeight: 700, letterSpacing: "-0.5px" },
-        statRow: { display: "flex", gap: 10, marginBottom: 20 },
-        stat: { flex: 1, background: "#16161E", borderRadius: 14, padding: "14px 10px", textAlign: "center" },
-        statNum: (c) => ({ fontSize: 28, fontWeight: 700, letterSpacing: "-0.5px", color: c }),
-        statLbl: { fontSize: 10, color: "#555", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 2 },
-        sectionTitle: { fontSize: 12, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#444", marginBottom: 10, marginTop: 22, paddingLeft: 2 },
-        wCard: (c) => ({ background: "#16161E", borderRadius: 20, padding: "18px 20px", marginBottom: 12, borderLeft: `3px solid ${c}`, cursor: "pointer", WebkitUserSelect: "none" }),
-        dayLbl: { fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "#555", marginBottom: 3 },
-        wName: (c) => ({ fontSize: 20, fontWeight: 700, letterSpacing: "-0.3px", color: c }),
-        badge: (c) => ({ display: "inline-block", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: c, background: c + "22", borderRadius: 6, padding: "2px 8px", marginTop: 8 }),
-        exCount: { fontSize: 13, color: "#666", marginTop: 4 },
-        card: { background: "#16161E", borderRadius: 16, padding: "16px 18px", marginBottom: 10 },
-        exName: { fontSize: 16, fontWeight: 600, marginBottom: 2 },
-        exNotes: { fontSize: 12, color: "#555", marginBottom: 12, fontStyle: "italic" },
-        colLbl: { fontSize: 10, color: "#333", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "center" },
-        setRow: { display: "flex", alignItems: "center", gap: 8, marginBottom: 8 },
-        setNum: { width: 22, fontSize: 12, color: "#444", textAlign: "center", flexShrink: 0 },
-        inp: (done) => ({ flex: 1, background: "#0A0A0F", border: "1px solid #222230", borderRadius: 10, color: done ? "#444" : "#F0F0F5", fontSize: 15, padding: "9px 10px", textAlign: "center", outline: "none", fontFamily: "inherit", width: "100%" }),
-        doneBtn: (done, c) => ({ width: 34, height: 34, borderRadius: 10, border: done ? "none" : "2px solid #222230", background: done ? c : "transparent", color: done ? "#fff" : "#333", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s", fontFamily: "inherit" }),
-        primaryBtn: (c) => ({ display: "block", width: "100%", padding: "16px", background: c, color: "#fff", border: "none", borderRadius: 16, fontSize: 16, fontWeight: 700, letterSpacing: "-0.2px", cursor: "pointer", fontFamily: "inherit", marginTop: 14 }),
-        secondaryBtn: { display: "block", width: "100%", padding: "14px", background: "#1A1A22", color: "#666", border: "none", borderRadius: 16, fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 8 },
-        textarea: { width: "100%", background: "#0A0A0F", border: "1px solid #222230", borderRadius: 12, color: "#F0F0F5", fontSize: 14, padding: "12px 14px", outline: "none", fontFamily: "inherit", resize: "none" },
-        backBtn: { background: "none", border: "none", color: "#666", fontSize: 15, cursor: "pointer", fontFamily: "inherit", padding: "0 0 12px 0", display: "flex", alignItems: "center", gap: 4 },
-        nav: { position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "#0D0D14ee", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid #1A1A24", display: "flex", paddingBottom: "env(safe-area-inset-bottom, 16px)", paddingTop: 8 },
-        navBtn: (active) => ({ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", color: active ? "#F0F0F5" : "#3A3A4A", fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "inherit", padding: "6px 0" }),
-        toast: { position: "fixed", bottom: 110, left: "50%", transform: "translateX(-50%)", background: "#22C55E", color: "#fff", padding: "10px 22px", borderRadius: 20, fontSize: 14, fontWeight: 600, zIndex: 100, whiteSpace: "nowrap", boxShadow: "0 4px 20px #22C55E44" },
-        histCard: (c) => ({ background: "#16161E", borderRadius: 16, padding: "14px 18px", marginBottom: 10, cursor: "pointer", borderLeft: `3px solid ${c}` }),
-        histDate: { fontSize: 11, color: "#444", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 3 },
-        histName: (c) => ({ fontSize: 17, fontWeight: 600, color: c, marginBottom: 4 }),
-        histMeta: { fontSize: 13, color: "#555" },
-        progressBar: { background: "#1A1A24", borderRadius: 6, height: 4, marginTop: 14 },
-        progressFill: (pct, c) => ({ width: `${pct}%`, background: c, height: 4, borderRadius: 6, transition: "width 0.3s" }),
-        progressLbl: { fontSize: 12, color: "#444", marginTop: 5 },
-        tipRow: { display: "flex", gap: 10, marginBottom: 10, alignItems: "flex-start" },
-        tipBullet: (c) => ({ color: c, fontSize: 11, marginTop: 3, flexShrink: 0 }),
-        tipText: { fontSize: 13, color: "#888", lineHeight: 1.55 },
-      };
-
-      const NavBar = ({ current }) => (
-        <nav style={css.nav}>
-          {[["🏠", "home", "Home"], ["📋", "history", "Log"]].map(([icon, sc, label]) => (
-            <button key={sc} style={css.navBtn(current === sc)} onClick={() => setScreen(sc)}>
-              <span style={{ fontSize: 24 }}>{icon}</span>{label}
-            </button>
-          ))}
-        </nav>
-      );
-
-      // ── WORKOUT SCREEN ──────────────────────────────────────────────────────
-      if (screen === "workout" && w) {
-        const totalSets = WORKOUTS[activeWorkout].exercises.reduce((a, e) => a + e.sets, 0);
-        const doneSets = Object.values(completedSets).filter(Boolean).length;
-        const pct = Math.round((doneSets / totalSets) * 100);
-
-        return (
-          <div style={css.app}>
-            <div style={{ ...css.header, borderBottom: "1px solid #14141C" }}>
-              <div style={css.label}>{w.day} · {w.focus} Focus</div>
-              <div style={{ ...css.title, color: accent }}>{activeWorkout}</div>
-              <div style={css.progressBar}><div style={css.progressFill(pct, accent)} /></div>
-              <div style={css.progressLbl}>{doneSets} / {totalSets} sets completed · {pct}%</div>
-            </div>
-
-            <div style={{ padding: "14px 14px 0" }}>
-              {WORKOUTS[activeWorkout].exercises.map((ex, i) => (
-                <div key={i} style={css.card}>
-                  <div style={css.exName}>{ex.name}</div>
-                  {ex.notes && <div style={css.exNotes}>{ex.notes}</div>}
-                  <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                    <div style={{ width: 22 }} />
-                    <div style={{ ...css.colLbl, flex: 1 }}>kg</div>
-                    <div style={{ ...css.colLbl, flex: 1 }}>reps</div>
-                    <div style={{ width: 34 }} />
-                  </div>
-                  {Array.from({ length: ex.sets }, (_, j) => {
-                    const key = `${i}-${j}`;
-                    const done = !!completedSets[key];
-                    return (
-                      <div key={j} style={css.setRow}>
-                        <div style={css.setNum}>{j + 1}</div>
-                        <input style={css.inp(done)} placeholder="kg" type="number" inputMode="decimal"
-                          value={sessionData[i]?.[j]?.weight || ""}
-                          onChange={e => updateSet(i, j, "weight", e.target.value)} />
-                        <input style={css.inp(done)} placeholder={ex.reps} type="number" inputMode="decimal"
-                          value={sessionData[i]?.[j]?.reps || ""}
-                          onChange={e => updateSet(i, j, "reps", e.target.value)} />
-                        <button style={css.doneBtn(done, accent)} onClick={() => toggleSetDone(i, j)}>
-                          {done ? "✓" : ""}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-
-              <div style={css.card}>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: "#888" }}>Session Notes</div>
-                <textarea style={css.textarea} rows={3}
-                  placeholder="PRs, energy levels, adjustments..."
-                  value={sessionNote}
-                  onChange={e => setSessionNote(e.target.value)} />
-              </div>
-
-              <button style={css.primaryBtn(accent)} onClick={finishWorkout}>Save Session</button>
-              <button style={css.secondaryBtn} onClick={() => setScreen("home")}>Discard</button>
-              <div style={{ height: 20 }} />
-            </div>
-            {toast && <div style={css.toast}>{toast}</div>}
-          </div>
-        );
-      }
-
-      // ── SESSION DETAIL ──────────────────────────────────────────────────────
-      if (screen === "session" && viewSession) {
-        const wColor = WORKOUTS[viewSession.workout]?.color || "#FF6B35";
-        return (
-          <div style={css.app}>
-            <div style={css.header}>
-              <button style={css.backBtn} onClick={() => setScreen("history")}>← Back</button>
-              <div style={css.label}>{viewSession.date}</div>
-              <div style={{ ...css.title, color: wColor }}>{viewSession.workout}</div>
-            </div>
-            <div style={{ padding: "10px 14px" }}>
-              {viewSession.note && (
-                <div style={{ ...css.card, borderLeft: `2px solid ${wColor}`, marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, color: "#444", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Notes</div>
-                  <div style={{ fontSize: 14, color: "#aaa", lineHeight: 1.6 }}>{viewSession.note}</div>
-                </div>
-              )}
-              {viewSession.exercises.map((ex, i) => (
-                <div key={i} style={css.card}>
-                  <div style={{ ...css.exName, marginBottom: 10 }}>{ex.name}</div>
-                  {ex.sets.map((set, j) => (
-                    <div key={j} style={{ display: "flex", gap: 10, marginBottom: 6, alignItems: "center" }}>
-                      <div style={css.setNum}>{j + 1}</div>
-                      <div style={{ flex: 1, textAlign: "center", fontSize: 15, color: set.weight ? "#F0F0F5" : "#2A2A35" }}>
-                        {set.weight ? `${set.weight} kg` : "—"}
-                      </div>
-                      <div style={{ flex: 1, textAlign: "center", fontSize: 15, color: set.reps ? "#F0F0F5" : "#2A2A35" }}>
-                        {set.reps ? `${set.reps} reps` : "—"}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-              <div style={{ height: 20 }} />
-            </div>
-          </div>
-        );
-      }
-
-      // ── HISTORY SCREEN ──────────────────────────────────────────────────────
-      if (screen === "history") {
-        const sessions = recentSessions();
-        return (
-          <div style={css.app}>
-            <div style={css.header}>
-              <div style={css.label}>Training Log</div>
-              <div style={css.title}>History</div>
-            </div>
-            <div style={{ padding: "10px 14px" }}>
-              {sessions.length === 0 ? (
-                <div style={{ textAlign: "center", color: "#333", padding: "70px 20px" }}>
-                  <div style={{ fontSize: 40, marginBottom: 16 }}>🏋️</div>
-                  <div style={{ fontSize: 16, color: "#444" }}>No sessions yet</div>
-                  <div style={{ fontSize: 13, color: "#333", marginTop: 8 }}>Complete your first workout to see it here</div>
-                </div>
-              ) : sessions.map((s2, i) => {
-                const wColor = WORKOUTS[s2.workout]?.color || "#FF6B35";
-                const setsTotal = s2.exercises.reduce((a, e) => a + e.sets.length, 0);
-                const setsLogged = s2.exercises.reduce((a, e) => a + e.sets.filter(s => s.weight || s.reps).length, 0);
-                return (
-                  <div key={i} style={css.histCard(wColor)} onClick={() => { setViewSession(s2); setScreen("session"); }}>
-                    <div style={css.histDate}>{s2.date}</div>
-                    <div style={css.histName(wColor)}>{s2.workout}</div>
-                    <div style={css.histMeta}>{setsLogged}/{setsTotal} sets logged · {s2.exercises.length} exercises</div>
-                    {s2.note && <div style={{ fontSize: 12, color: "#444", marginTop: 6, fontStyle: "italic" }}>"{s2.note.slice(0, 70)}{s2.note.length > 70 ? "…" : ""}"</div>}
-                  </div>
-                );
-              })}
-              <div style={{ height: 20 }} />
-            </div>
-            <NavBar current="history" />
-          </div>
-        );
-      }
-
-      // ── HOME SCREEN ─────────────────────────────────────────────────────────
-      return (
-        <div style={css.app}>
-          <div style={css.header}>
-            <div style={css.label}>Upper / Lower Split</div>
-            <div style={css.title}>Train</div>
-          </div>
-          <div style={{ padding: "10px 14px" }}>
-            <div style={css.statRow}>
-              <div style={css.stat}>
-                <div style={css.statNum("#FF6B35")}>{totalSessions()}</div>
-                <div style={css.statLbl}>Sessions</div>
-              </div>
-              <div style={css.stat}>
-                <div style={css.statNum("#4ECDC4")}>{monthCount()}</div>
-                <div style={css.statLbl}>This Month</div>
-              </div>
-              <div style={css.stat}>
-                <div style={css.statNum("#A855F7")}>4</div>
-                <div style={css.statLbl}>Days / Wk</div>
-              </div>
-            </div>
-
-            <div style={css.sectionTitle}>This Week</div>
-            {Object.entries(WORKOUTS).map(([name, wk]) => (
-              <div key={name} style={css.wCard(wk.color)} onClick={() => startWorkout(name)}>
-                <div style={css.dayLbl}>{wk.day}</div>
-                <div style={css.wName(wk.color)}>{name}</div>
-                <div style={css.exCount}>{wk.exercises.length} exercises</div>
-                <span style={css.badge(wk.color)}>{wk.focus} Focus</span>
-              </div>
-            ))}
-
-            <div style={css.sectionTitle}>Protocol Rules</div>
-            <div style={{ ...css.card, borderLeft: "2px solid #FF6B3544" }}>
-              {[
-                ["Keep the weight on the bar — don't drop load during the cut", "#FF6B35"],
-                ["Stop 1–2 reps short of failure to manage cortisol", "#4ECDC4"],
-                ["Cap sessions at 45–55 min max", "#A855F7"],
-                ["Log every lift — a 20% drop in weight is a warning sign", "#22C55E"],
-              ].map(([tip, c], i) => (
-                <div key={i} style={{ ...css.tipRow, marginBottom: i < 3 ? 10 : 0 }}>
-                  <div style={css.tipBullet(c)}>▸</div>
-                  <div style={css.tipText}>{tip}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <NavBar current="home" />
-          {toast && <div style={css.toast}>{toast}</div>}
+    return (
+      <div style={S.app}>
+        <div style={S.header}>
+          <button style={S.back} onClick={() => setScreen("manage")}>← Cancel</button>
+          <div style={S.label}>{isNew ? "New" : "Editing"}</div>
+          <div style={{ ...S.title, color: t.color }}>{t.name || "Untitled"}</div>
         </div>
-      );
-    }
+        <div style={{ padding: "10px 14px" }}>
+          <div style={S.card}>
+            <div style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 8 }}>Workout name</div>
+            <input style={S.ti} value={t.name} onChange={e => setT({ name: e.target.value })} placeholder="e.g. Upper A" />
+            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 8 }}>Day</div>
+                <input style={S.ti} value={t.day} onChange={e => setT({ day: e.target.value })} placeholder="Monday" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 8 }}>Focus</div>
+                <input style={S.ti} value={t.focus} onChange={e => setT({ focus: e.target.value })} placeholder="Push" />
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: ".1em", margin: "14px 0 8px" }}>Colour</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {PALETTE.map(c => (
+                <button key={c} onClick={() => setT({ color: c })}
+                  style={{ width: 32, height: 32, borderRadius: 10, background: c, border: t.color===c ? "3px solid #fff" : "none", cursor: "pointer" }} />
+              ))}
+            </div>
+          </div>
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-  </script>
+          <div style={S.sect}>Exercises</div>
+          {t.exercises.map((ex,i) => (
+            <div key={i} style={S.card}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: "#444", width: 18 }}>{i+1}</div>
+                <input style={S.ti} value={ex.name} placeholder="Exercise name"
+                  onChange={e => setEx(i, { name: e.target.value })} />
+                <button style={{ ...S.iconBtn, color: "#E05252" }}
+                  onClick={() => setT({ exercises: t.exercises.filter((_,x) => x!==i) })}>✕</button>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ ...S.colLbl, textAlign: "left", marginBottom: 4 }}>sets</div>
+                  <input style={S.ti} type="number" inputMode="numeric" value={ex.sets}
+                    onChange={e => setEx(i, { sets: Math.max(1, Math.min(10, +e.target.value || 1)) })} />
+                </div>
+                <div style={{ flex: 1.4 }}>
+                  <div style={{ ...S.colLbl, textAlign: "left", marginBottom: 4 }}>target reps</div>
+                  <input style={S.ti} value={ex.reps} placeholder="8–10"
+                    onChange={e => setEx(i, { reps: e.target.value })} />
+                </div>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <div style={{ ...S.colLbl, textAlign: "left", marginBottom: 4 }}>note (optional)</div>
+                <input style={S.ti} value={ex.notes || ""} placeholder="Cue or reminder"
+                  onChange={e => setEx(i, { notes: e.target.value })} />
+              </div>
+              <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                <button style={{ ...S.iconBtn, flex: 1, fontSize: 13 }} disabled={i===0}
+                  onClick={() => { const a=[...t.exercises]; [a[i-1],a[i]]=[a[i],a[i-1]]; setT({exercises:a}); }}>↑ Up</button>
+                <button style={{ ...S.iconBtn, flex: 1, fontSize: 13 }} disabled={i===t.exercises.length-1}
+                  onClick={() => { const a=[...t.exercises]; [a[i+1],a[i]]=[a[i],a[i+1]]; setT({exercises:a}); }}>↓ Down</button>
+              </div>
+            </div>
+          ))}
+
+          <button style={{ ...S.sBtn, marginTop: 4 }}
+            onClick={() => setT({ exercises: [...t.exercises, { name: "", sets: 3, reps: "8–10", notes: "" }] })}>
+            + Add exercise
+          </button>
+          <button style={S.pBtn(t.color)} onClick={save}>Save workout</button>
+          <div style={{ height: 24 }} />
+        </div>
+      </div>
+    );
+  }
+
+  /* ── MANAGE PLAN ────────────────────────────────────────────────────────── */
+  if (screen === "manage") {
+    return (
+      <div style={S.app}>
+        <div style={S.header}>
+          <div style={S.label}>Customise</div>
+          <div style={S.title}>Plan</div>
+        </div>
+        <div style={{ padding: "10px 14px" }}>
+          {Object.entries(plan).map(([name,wk]) => (
+            <div key={name} style={{ ...S.card, borderLeft: `3px solid ${wk.color}`, display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: ".1em" }}>{wk.day} · {wk.focus}</div>
+                <div style={{ fontSize: 17, fontWeight: 600, color: wk.color, marginTop: 2 }}>{name}</div>
+                <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>{wk.exercises.length} exercises</div>
+              </div>
+              <button style={S.iconBtn} onClick={() => { setEditTarget({ ...JSON.parse(JSON.stringify(wk)), name, originalName: name }); setScreen("edit"); }}>✎</button>
+              <button style={{ ...S.iconBtn, color: "#E05252" }}
+                onClick={() => { if (confirm(`Delete "${name}"? Logged history is kept.`)) setPlan(p => { const n={...p}; delete n[name]; return n; }); }}>🗑</button>
+            </div>
+          ))}
+          <button style={{ ...S.sBtn, marginTop: 12 }}
+            onClick={() => { setEditTarget({ name: "", day: "", focus: "", color: PALETTE[Object.keys(plan).length % PALETTE.length], exercises: [{ name: "", sets: 3, reps: "8–10", notes: "" }], originalName: null }); setScreen("edit"); }}>
+            + Add new workout
+          </button>
+          <div style={S.sect}>Data</div>
+          <button style={{ ...S.sBtn, marginTop: 0, background: "#1E2A38", color: "#7FB3E8" }} onClick={exportCSV}>⬇  Export training log (CSV)</button>
+          <button style={{ ...S.sBtn, color: "#8B4A4A" }}
+            onClick={() => { if (confirm("Reset plan to the original 4-day split? Logged sessions are kept.")) { setPlan(DEFAULT_PLAN); showToast("Plan reset ✓"); } }}>
+            Reset plan to default split
+          </button>
+          <div style={{ height: 20 }} />
+        </div>
+        <Nav cur="manage" />
+        {toast && <div style={S.toast}>{toast}</div>}
+      </div>
+    );
+  }
+
+  /* ── HOME ───────────────────────────────────────────────────────────────── */
+  const monthName = new Date().toLocaleString("en-US", { month: "long" });
+  return (
+    <div style={S.app}>
+      <div style={S.header}>
+        <div style={S.label}>Training</div>
+        <div style={S.title}>Train</div>
+      </div>
+      <div style={{ padding: "10px 14px" }}>
+        <div style={S.statRow}>
+          <div style={S.stat}><div style={S.statNum("#4ECDC4")}>{thisMonthCount()}</div><div style={S.statLbl}>{monthName}</div></div>
+          <div style={S.stat}><div style={S.statNum("#FF6B35")}>{totalSessions()}</div><div style={S.statLbl}>All time</div></div>
+          <div style={S.stat}><div style={S.statNum("#A855F7")}>{Object.keys(plan).length}</div><div style={S.statLbl}>Workouts</div></div>
+        </div>
+        <div style={S.sect}>Your split</div>
+        {Object.entries(plan).map(([name,wk]) => (
+          <div key={name} style={S.wCard(wk.color)} onClick={() => startWorkout(name)}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, letterSpacing: ".12em", textTransform: "uppercase", color: "#555", marginBottom: 3 }}>{wk.day}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-.3px", color: wk.color }}>{name}</div>
+              <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>{wk.exercises.length} exercises</div>
+              <span style={{ display: "inline-block", fontSize: 11, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: wk.color, background: wk.color+"22", borderRadius: 6, padding: "2px 8px", marginTop: 8 }}>{wk.focus}</span>
+            </div>
+            <div style={{ color: "#333", fontSize: 20 }}>›</div>
+          </div>
+        ))}
+        <div style={S.sect}>Protocol rules</div>
+        <div style={{ ...S.card, borderLeft: "2px solid #FF6B3544" }}>
+          {[["Keep the weight on the bar — don't drop load during the cut","#FF6B35"],
+            ["Stop 1–2 reps short of failure to manage cortisol","#4ECDC4"],
+            ["Cap sessions at 45–55 min","#A855F7"],
+            ["Beat last session's numbers where you can — they're shown inline","#22C55E"]].map(([t,c],i) => (
+            <div key={i} style={{ display: "flex", gap: 10, marginBottom: i<3?10:0, alignItems: "flex-start" }}>
+              <div style={{ color: c, fontSize: 11, marginTop: 3 }}>▸</div>
+              <div style={{ fontSize: 13, color: "#888", lineHeight: 1.55 }}>{t}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <Nav cur="home" />
+      <DraftModal />
+      {toast && <div style={S.toast}>{toast}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
 </body>
 </html>
